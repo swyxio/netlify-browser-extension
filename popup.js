@@ -1,9 +1,4 @@
-let webExtensionAPI
-try {
-  webExtensionAPI = browser //ffox
-} catch {
-  webExtensionAPI = chrome
-}
+let webExtensionAPI = chrome;
 const DEBUG = true
 // //Send version request to background page
 // webExtensionAPI.runtime.sendMessage({ get_version: "true" }, function(response) {
@@ -11,12 +6,21 @@ const DEBUG = true
 // })
 
 webExtensionAPI.runtime.sendMessage({ method: "getHost" }, function(response) {
+  if (!response) {
+    console.error("No response from background script");
+    return;
+  }
+  
   const loading = document.getElementById("loading")
   const loaded = document.getElementById("loaded")
   const ghbutton = document.getElementById("ghbutton")
   const ghspan = document.getElementById("ghspan")
   const dpbutton = document.getElementById("dpbutton")
-  if (host === null) {
+  const dpspan = document.getElementById("dpspan")
+  
+  var { urlHost: host, requestHeader } = response
+  
+  if (host === null || host === undefined) {
     document.getElementById("label").appendChild(document.createTextNode("but its deploy logs are not public."))
     // nothing at all
     ghspan.hidden = true
@@ -25,7 +29,6 @@ webExtensionAPI.runtime.sendMessage({ method: "getHost" }, function(response) {
     loaded.hidden = false
     return
   }
-  var { urlHost: host, requestHeader } = response
 
   if (DEBUG) console.log({ host, requestHeader })
   let serverHeaderText = "Server header: " + (requestHeader && requestHeader.server)

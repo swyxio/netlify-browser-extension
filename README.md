@@ -1,4 +1,4 @@
-# netlify-browser-extension
+# swyxio-browser-extension
 
 Get it:
 
@@ -22,6 +22,9 @@ This is a tiny little browser extension that does a couple things:
       - show you a link to deploy log, only useful if you own it
   - else:
     - nothing else we can do
+- if you're on `github.com`
+  - makes it easy to one click deploy the repo to netlify
+  - adds a button for [Cognition DeepWiki](https://news.smol.ai/issues/25-04-25-cognition-deepwiki)
 - else:
   - not active
 
