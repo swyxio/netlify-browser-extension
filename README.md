@@ -41,3 +41,12 @@ Honestly its probably more complicated than needs to be but i based it off of ot
 - `background.js` activates the "browser action" (the little logo on the browser bar) if its a Netlify site by sniffing the `Server` field in the response header.
 - if it is a Netlify site and you click the "browser action":
   - if it is on `.netlify.com` host, `popup.js` checks if it is open source and manipulates `popup.html` accordingly.
+
+
+---
+
+## dev notes for swyx
+
+- update manifest.json version
+- zip this folder up
+- https://chrome.google.com/webstore/devconsole/bd7a2950-c079-4c4e-9d34-18b345736841/dkhfpnphbcckigklfkaemnjdmghhcaoh/edit/package

@@ -1,3 +1,6 @@
+// Import browser polyfill for Firefox compatibility
+import './browser-polyfill.js';
+
 var urlHost, requestHeader
 var getLocation = function(href) {
   var l = document.createElement("a")
@@ -5,7 +8,8 @@ var getLocation = function(href) {
   return l
 }
 
-let webExtensionAPI = chrome;
+// Use browser namespace from the polyfill
+let webExtensionAPI = browser;
 
 function onMessage(request, sender, sendResponse) {
   console.log("onMessage", { request })
@@ -36,11 +40,12 @@ function onMessage(request, sender, sendResponse) {
   if (request.method === "setHost") {
     console.log("setHost", { request })
     urlHost = request.url
-    return true; // Keep the message channel open for async response
+    try { sendResponse({ ok: true }); } catch (e) { console.warn('sendResponse error for setHost', e); }
+    return; // respond synchronously; do not keep channel open
   } else if (request.method === "getHost") {
     console.log("getHost", { urlHost })
-    sendResponse({ urlHost, requestHeader })
-    return true; // Keep the message channel open for async response
+    try { sendResponse({ urlHost, requestHeader }); } catch (e) { console.warn('sendResponse error for getHost', e); }
+    return; // respond synchronously; do not keep channel open
   }
   
   if (request.get_version) {

@@ -1,4 +1,5 @@
-let webExtensionAPI = chrome;
+// Use browser namespace from the polyfill
+let webExtensionAPI = browser;
 const DEBUG = true
 // //Send version request to background page
 // webExtensionAPI.runtime.sendMessage({ get_version: "true" }, function(response) {
