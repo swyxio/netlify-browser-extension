@@ -189,7 +189,7 @@ if (host === "github.com" && typeof pathname === "string" && PHActions.length) {
         'justify-content:center',
         'height:36px',
         'padding:0 12px',
-        'margin-left:8px',
+        'margin-left:12px',
         'border-radius:18px',
         'border:1px solid rgba(255,255,255,0.2)',
         'background:#272727',
@@ -197,7 +197,8 @@ if (host === "github.com" && typeof pathname === "string" && PHActions.length) {
         'font-size:14px',
         'line-height:20px',
         'cursor:pointer',
-        'vertical-align:middle'
+        'vertical-align:middle',
+        'align-self:center'
       ].join(';');
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -209,19 +210,52 @@ if (host === "github.com" && typeof pathname === "string" && PHActions.length) {
     }
 
     function findFlexRowContainerNearSubscribe() {
-      const sub = document.querySelector('ytd-subscribe-button-renderer');
-      if (!sub) return null;
-      let anchor = sub;
-      let parent = anchor.parentElement;
-      for (let i = 0; i < 6 && parent; i++) {
-        const cs = getComputedStyle(parent);
-        const isFlexRow = (cs.display.includes('flex') && (cs.flexDirection === 'row' || cs.flexDirection === 'row-reverse'));
-        if (isFlexRow) {
-          return { container: parent, anchor };
+      // Try the canonical element first
+      const subscribeRenderer = document.querySelector('ytd-subscribe-button-renderer');
+      if (subscribeRenderer) {
+        let parent = subscribeRenderer;
+        for (let i = 0; i < 6 && parent; i++) {
+          const cs = getComputedStyle(parent);
+          const isFlexRow = (cs.display.includes('flex') && (cs.flexDirection === 'row' || cs.flexDirection === 'row-reverse'));
+          if (isFlexRow) {
+            return { container: parent, anchor: subscribeRenderer };
+          }
+          parent = parent.parentElement;
         }
-        anchor = parent;
-        parent = parent.parentElement;
       }
+
+      // Fallback: search for a visible button whose text suggests subscribe/owner state
+      const textMatches = ['subscribe', 'subscribed', 'join', 'manage videos', 'customize channel', 'edit video', 'analytics'];
+      const candidates = Array.from(document.querySelectorAll('ytd-button-renderer, yt-button-shape, tp-yt-paper-button, button, a'))
+        .filter(el => el && el.offsetParent !== null) // visible
+        .filter(el => {
+          const txt = (el.textContent || '').trim().toLowerCase();
+          return txt && textMatches.some(t => txt.includes(t));
+        });
+
+      // Prefer to anchor after Edit video (or owner actions) to keep Summarize at the end
+      const priority = ['edit video', 'manage videos', 'customize channel', 'subscribed', 'subscribe', 'join', 'analytics'];
+      let anchor = null;
+      for (const p of priority) {
+        anchor = candidates.find(el => (el.textContent || '').toLowerCase().includes(p));
+        if (anchor) break;
+      }
+      if (!anchor) anchor = candidates[0];
+      if (anchor) {
+        let parent = anchor;
+        for (let i = 0; i < 8 && parent; i++) {
+          const cs = getComputedStyle(parent);
+          const isFlexRow = (cs.display.includes('flex') && (cs.flexDirection === 'row' || cs.flexDirection === 'row-reverse'));
+          if (isFlexRow) {
+            return { container: parent, anchor };
+          }
+          parent = parent.parentElement;
+        }
+        if (anchor.parentElement) {
+          return { container: anchor.parentElement, anchor };
+        }
+      }
+
       return null;
     }
 
@@ -238,31 +272,70 @@ if (host === "github.com" && typeof pathname === "string" && PHActions.length) {
     }
 
     function tryPlaceInActionsRow() {
-      const actions = document.querySelector('ytd-menu-renderer #top-level-buttons-computed');
+      const selectors = [
+        'ytd-menu-renderer #top-level-buttons-computed',
+        '#top-level-buttons-computed',
+        'ytd-video-owner-renderer #actions',
+        'ytd-owner-renderer #actions',
+        'ytd-watch-metadata #owner #actions',
+        '#owner #actions',
+        'ytd-watch-metadata #owner',
+        'ytd-menu-renderer[has-flexible-items]',
+        'ytd-menu-renderer'
+      ];
+      let actions = null;
+      for (const sel of selectors) {
+        actions = document.querySelector(sel);
+        if (actions) break;
+      }
       if (actions) {
         const btn = createButton();
         if (!btn) return false;
         if (btn.parentNode !== actions) actions.appendChild(btn);
+        btn.style.alignSelf = 'center';
         return true;
       }
+
+      // Host-based fallback: place as a sibling of known hosts within their flex row container
+      const hostSelectors = [
+        'ytd-menu-renderer',
+        'ytd-subscribe-button-renderer',
+        'ytd-video-owner-renderer',
+        'ytd-owner-renderer'
+      ];
+      for (const hsel of hostSelectors) {
+        const host = document.querySelector(hsel);
+        if (!host || !host.parentElement) continue;
+        let parent = host.parentElement;
+        for (let i = 0; i < 8 && parent; i++) {
+          const cs = getComputedStyle(parent);
+          const isFlexRow = (cs.display.includes('flex') && (cs.flexDirection === 'row' || cs.flexDirection === 'row-reverse'));
+          if (isFlexRow) {
+            const btn = createButton();
+            if (!btn) return false;
+            if (btn.parentNode !== parent) parent.insertBefore(btn, host.nextSibling);
+            btn.style.alignSelf = 'center';
+            return true;
+          }
+          parent = parent.parentElement;
+        }
+      }
+
       return false;
     }
 
     function ensurePlaced() {
-      const btn = document.getElementById(BTN_ID);
-      if (btn && document.body.contains(btn)) return true;
-      if (tryPlaceNextToSubscribe()) return true;
-      if (tryPlaceInActionsRow()) return true;
+      // Always try to (re)place the button so we survive SPA layout changes.
+      const placedNextToSub = tryPlaceNextToSubscribe();
+      if (placedNextToSub) return true;
+      const placedInActions = tryPlaceInActionsRow();
+      if (placedInActions) return true;
       return false;
     }
 
     ensurePlaced();
 
     window.addEventListener('yt-navigate-finish', () => {
-      const btn = document.getElementById(BTN_ID);
-      if (btn && !document.body.contains(btn)) {
-        try { btn.remove(); } catch (_) {}
-      }
       ensurePlaced();
     });
 
